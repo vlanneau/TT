@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deskeo Bets — Qui est en TT aujourd'hui ?</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+    --border: #475569; --text: #e2e8f0; --text2: #94a3b8;
+    --primary: #6366f1; --primary-hover: #818cf8;
+    --green: #10b981; --green-bg: #064e3b;
+    --red: #ef4444; --red-bg: #7f1d1d;
+    --yellow: #f59e0b; --yellow-bg: #78350f;
+    --blue: #3b82f6;
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .header h1 { font-size: 24px; font-weight: 800; }
+  .header h1 span { color: var(--yellow); }
+  .header p { color: var(--text2); font-size: 13px; margin-top: 4px; }
+  .header-right { display: flex; gap: 6px; }
+  .save-indicator { font-size: 11px; padding: 4px 10px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px; }
+  .save-indicator.ok { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+  .save-indicator.warn { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow); }
+  .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface); border-radius: 10px; padding: 4px; flex-wrap: wrap; }
+  .tab { flex: 1; padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); transition: all 0.2s; border: none; background: none; min-width: 80px; }
+  .tab.active { background: var(--primary); color: #fff; }
+  .tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+  .card { background: var(--surface); border: 1px solid var(--surface2); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .player-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .player-chip { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 2px solid var(--surface2); background: var(--surface); color: var(--text2); transition: all 0.2s; }
+  .player-chip.active { border-color: var(--primary); background: #312e81; color: #fff; }
+  .player-chip:hover { border-color: var(--primary); }
+  .stats-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-box { flex: 1; min-width: 100px; background: var(--surface); border: 1px solid var(--surface2); border-radius: 10px; padding: 12px 16px; text-align: center; }
+  .stat-value { font-size: 24px; font-weight: 800; }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.blue { color: var(--blue); }
+  .colleague-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .colleague-card { background: var(--bg); border: 2px solid var(--surface2); border-radius: 10px; padding: 14px; text-align: center; transition: all 0.2s; position: relative; }
+  .colleague-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+  .colleague-card.bet-office { border-color: var(--green); background: var(--green-bg); }
+  .colleague-card.bet-remote { border-color: var(--yellow); background: var(--yellow-bg); }
+  .colleague-card .avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 20px; font-weight: 700; color: #fff; }
+  .colleague-card .name { font-size: 13px; font-weight: 600; }
+  .colleague-card .bet-label { font-size: 10px; font-weight: 700; margin-top: 6px; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+  .colleague-card .bet-label.office { background: var(--green); color: #fff; }
+  .colleague-card .bet-label.remote { background: var(--yellow); color: #1e293b; }
+  .colleague-card .bet-amount { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .bet-controls { margin-top: 10px; }
+  .bet-row { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 6px; }
+  .bet-btn { padding: 6px 12px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .bet-btn.office { background: var(--green); color: #fff; }
+  .bet-btn.remote { background: var(--yellow); color: #1e293b; }
+  .bet-btn.cancel { background: var(--surface2); color: var(--text2); }
+  .bet-btn:hover { transform: scale(1.05); filter: brightness(1.15); }
+  .amount-input { width: 70px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; text-align: center; font-weight: 600; }
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 14px 0; }
+  .result-chip { padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; border: 2px solid var(--surface2); background: var(--bg); transition: all 0.2s; }
+  .result-chip:hover { border-color: var(--text2); }
+  .result-chip.present { border-color: var(--green); background: var(--green-bg); }
+  .result-chip.absent { border-color: var(--yellow); background: var(--yellow-bg); }
+  .result-chip .r-name { font-size: 12px; font-weight: 600; }
+  .result-chip .r-status { font-size: 10px; margin-top: 4px; }
+  .history-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg); border-radius: 8px; margin-bottom: 6px; font-size: 13px; flex-wrap: wrap; }
+  .history-row .h-date { color: var(--text2); font-size: 12px; min-width: 80px; font-family: monospace; }
+  .history-row .h-detail { flex: 1; color: var(--text); min-width: 200px; }
+  .history-row .h-amount { font-weight: 700; min-width: 70px; text-align: right; }
+  .history-row .h-amount.win { color: var(--green); }
+  .history-row .h-amount.loss { color: var(--red); }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg); border-radius: 8px; margin-bottom: 6px; }
+  .lb-row .rank { font-size: 20px; min-width: 36px; text-align: center; }
+  .lb-row .lb-name { flex: 1; font-weight: 600; font-size: 14px; }
+  .lb-row .lb-score { font-weight: 800; font-size: 18px; }
+  .lb-row:nth-child(1) .lb-score { color: var(--yellow); }
+  .lb-row:nth-child(2) .lb-score { color: var(--text2); }
+  .lb-row:nth-child(3) .lb-score { color: #cd7f32; }
+  .setting-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .setting-row input[type="text"], .setting-row input[type="number"] { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; min-width: 80px; }
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { filter: brightness(1.15); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-success:hover { filter: brightness(1.15); }
+  .btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-outline:hover { color: var(--text); border-color: var(--text); }
+  .validate-bar { background: linear-gradient(135deg, #064e3b, #1e293b); border: 1px solid var(--green); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .validate-bar p { font-size: 14px; font-weight: 600; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; font-size: 12px; background: var(--surface2); color: var(--text); }
+  .tag .remove { cursor: pointer; font-size: 14px; color: var(--red); margin-left: 4px; }
+  .empty-state { text-align: center; padding: 40px; color: var(--text2); }
+  .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 100; transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--green); color: #fff; }
+  .toast.error { background: var(--red); color: #fff; }
+  .toast.info { background: var(--primary); color: #fff; }
+  .reset-zone { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--surface2); }
+  .save-section { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-top: 16px; }
+  .save-section p { font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+  .save-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🎲 Deskeo <span>Bets</span></h1>
+    <p>Pariez sur qui sera en télétravail — 1 000 crédits pour commencer</p>
+  </div>
+  <div class="header-right">
+    <div class="save-indicator" id="saveStatus"></div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Player selector -->
+  <div class="card" style="padding:14px 20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:13px;color:var(--text2);">Joueur actif :</div>
+      <div class="player-bar" id="playerBar"></div>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-box"><div class="stat-value yellow" id="statCredits">1000</div><div class="stat-label">Crédits</div></div>
+    <div class="stat-box"><div class="stat-value green" id="statWins">0</div><div class="stat-label">Gagnés</div></div>
+    <div class="stat-box"><div class="stat-value red" id="statLosses">0</div><div class="stat-label">Perdus</div></div>
+    <div class="stat-box"><div class="stat-value blue" id="statAccuracy">—</div><div class="stat-label">Précision</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('bet',this)">🎯 Parier</button>
+    <button class="tab" onclick="switchTab('results',this)">✅ Résultats</button>
+    <button class="tab" onclick="switchTab('leaderboard',this)">🏆 Classement</button>
+    <button class="tab" onclick="switchTab('history',this)">📜 Historique</button>
+    <button class="tab" onclick="switchTab('settings',this)">⚙️ Config</button>
+  </div>
+
+  <div id="tab-bet" class="tab-content">
+    <div class="card">
+      <div class="card-title">🎯 Paris du jour — <span id="todayDate" style="color:var(--yellow);"></span></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Cliquez sur un collègue pour parier : <strong style="color:var(--green);">bureau</strong> ou <strong style="color:var(--yellow);">télétravail</strong></p>
+      <div class="colleague-grid" id="colleagueGrid"></div>
+    </div>
+  </div>
+
+  <div id="tab-results" class="tab-content" style="display:none;">
+    <div class="validate-bar" id="validateBar">
+      <p>📋 Indiquez qui est présent, puis validez pour calculer les gains.</p>
+      <button class="btn btn-success" onclick="validateDay()">Valider la journée</button>
+    </div>
+    <div class="card">
+      <div class="card-title">✅ Présences réelles — <span id="resultDate" style="color:var(--yellow);"></span></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Cliquez pour basculer : <strong style="color:var(--green);">Bureau</strong> / <strong style="color:var(--yellow);">TT</strong></p>
+      <div class="result-grid" id="resultGrid"></div>
+    </div>
+  </div>
+
+  <div id="tab-leaderboard" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title">🏆 Classement du mois</div>
+      <div id="leaderboard"></div>
+    </div>
+  </div>
+
+  <div id="tab-history" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title">📜 Historique des paris</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <div id="tab-settings" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title">👥 Joueurs (parieurs)</div>
+      <div class="setting-row">
+        <input type="text" id="newPlayerName" placeholder="Nom du joueur..." onkeypress="if(event.key==='Enter')addPlayer()">
+        <button class="btn btn-primary" onclick="addPlayer()">+ Ajouter</button>
+      </div>
+      <div class="tag-list" id="playerList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏢 Collègues (ceux sur qui on parie)</div>
+      <div class="setting-row">
+        <input type="text" id="newColleagueName" placeholder="Nom du collègue..." onkeypress="if(event.key==='Enter')addColleague()">
+        <button class="btn btn-primary" onclick="addColleague()">+ Ajouter</button>
+      </div>
+      <div class="tag-list" id="colleagueList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">💰 Paramètres</div>
+      <div class="setting-row">
+        <span style="font-size:13px;min-width:170px;">Crédits de départ :</span>
+        <input type="number" id="startingCredits" value="1000" style="width:100px;flex:none;" onchange="updateSetting()">
+      </div>
+      <div class="setting-row">
+        <span style="font-size:13px;min-width:170px;">Mise par défaut :</span>
+        <input type="number" id="defaultBet" value="50" style="width:100px;flex:none;" onchange="updateSetting()">
+      </div>
+      <div class="setting-row">
+        <span style="font-size:13px;min-width:170px;">Multiplicateur gain :</span>
+        <input type="number" id="winMultiplier" value="2" step="0.5" style="width:100px;flex:none;" onchange="updateSetting()">
+        <span style="font-size:11px;color:var(--text2);">× la mise si correct</span>
+      </div>
+      <div class="reset-zone">
+        <button class="btn btn-danger" onclick="resetMonth()">🔄 Reset du mois</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">💾 Sauvegarde</div>
+      <div class="save-section">
+        <p>Les données sont sauvegardées automatiquement dans le navigateur (localStorage). Si ça ne fonctionne pas (ex: navigation privée), utilisez l'export/import JSON ci-dessous.</p>
+        <div class="save-btns">
+          <button class="btn btn-primary" onclick="exportData()">📥 Exporter (JSON)</button>
+          <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">📤 Importer (JSON)</button>
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+          <button class="btn btn-outline" onclick="copyDataToClipboard()">📋 Copier dans le presse-papier</button>
+        </div>
+      </div>
+      <div class="save-section" style="margin-top:10px;">
+        <p>Ou collez ici des données précédemment copiées :</p>
+        <div class="setting-row">
+          <input type="text" id="pasteData" placeholder="Collez le JSON ici...">
+          <button class="btn btn-primary btn-sm" onclick="importFromPaste()">Charger</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================
+// STORAGE
+// ============================
+const STORAGE_KEY = 'deskeo-bets-v3';
+let lsAvailable = false;
+
+function testLocalStorage() {
+  try {
+    const t = '__ls_test__';
+    localStorage.setItem(t, '1');
+    localStorage.removeItem(t);
+    return true;
+  } catch(e) { return false; }
+}
+
+function loadState() {
+  lsAvailable = testLocalStorage();
+  if (lsAvailable) {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const s = JSON.parse(saved);
+        return migrate(s);
+      }
+    } catch(e) { console.warn('LS load failed', e); }
+  }
+  return defaultState();
+}
+
+function saveState() {
+  if (lsAvailable) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch(e) { console.warn('LS save failed', e); }
+  }
+  updateSaveIndicator();
+}
+
+function updateSaveIndicator() {
+  const el = document.getElementById('saveStatus');
+  if (lsAvailable) {
+    // Verify it actually saved
+    try {
+      const check = localStorage.getItem(STORAGE_KEY);
+      if (check) {
+        el.className = 'save-indicator ok';
+        el.innerHTML = '💾 Auto-save OK';
+        return;
+      }
+    } catch(e) {}
+  }
+  el.className = 'save-indicator warn';
+  el.innerHTML = '⚠️ Pas de sauvegarde auto — exportez en JSON';
+}
+
+function migrate(s) {
+  if (!s.winMultiplier) s.winMultiplier = 2;
+  if (!s.validated) s.validated = {};
+  if (!s.defaultBet) s.defaultBet = 50;
+  if (!s.startingCredits) s.startingCredits = 1000;
+  if (!s.playerData) s.playerData = {};
+  if (!s.results) s.results = {};
+  if (!s.players) s.players = [];
+  if (!s.colleagues) s.colleagues = [];
+  return s;
+}
+
+function defaultState() {
+  return { players: [], colleagues: [], activePlayer: null, startingCredits: 1000, defaultBet: 50, winMultiplier: 2, playerData: {}, results: {}, validated: {} };
+}
+
+// ============================
+// EXPORT / IMPORT
+// ============================
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `deskeo-bets-${today()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Données exportées !', 'success');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      state = migrate(imported);
+      saveState();
+      renderAll();
+      toast('Données importées avec succès !', 'success');
+    } catch(err) {
+      toast('Fichier JSON invalide', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function copyDataToClipboard() {
+  const json = JSON.stringify(state);
+  navigator.clipboard.writeText(json).then(() => {
+    toast('Données copiées dans le presse-papier !', 'success');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Données copiées !', 'success');
+  });
+}
+
+function importFromPaste() {
+  const input = document.getElementById('pasteData');
+  const val = input.value.trim();
+  if (!val) return toast('Collez des données JSON d\'abord', 'error');
+  try {
+    const imported = JSON.parse(val);
+    state = migrate(imported);
+    saveState();
+    renderAll();
+    input.value = '';
+    toast('Données chargées !', 'success');
+  } catch(err) {
+    toast('JSON invalide', 'error');
+  }
+}
+
+// ============================
+// STATE & HELPERS
+// ============================
+let state = loadState();
+
+function today() { return new Date().toISOString().split('T')[0]; }
+function formatDate(d) { const p = d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
+
+const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899','#8b5cf6','#14b8a6','#f97316','#06b6d4','#a855f7','#84cc16'];
+function getColor(name) { let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h); return COLORS[Math.abs(h) % COLORS.length]; }
+
+function getPlayerData() {
+  if (!state.activePlayer || !state.playerData[state.activePlayer]) return null;
+  return state.playerData[state.activePlayer];
+}
+function getTodayBets() {
+  const pd = getPlayerData();
+  if (!pd) return {};
+  if (!pd.bets[today()]) pd.bets[today()] = {};
+  return pd.bets[today()];
+}
+
+// ============================
+// ACTIONS
+// ============================
+function addPlayer() {
+  const input = document.getElementById('newPlayerName');
+  const name = input.value.trim();
+  if (!name || state.players.includes(name)) { input.value = ''; return; }
+  state.players.push(name);
+  state.playerData[name] = { credits: state.startingCredits, wins: 0, losses: 0, bets: {}, history: [] };
+  if (!state.activePlayer) state.activePlayer = name;
+  input.value = '';
+  saveState(); renderAll();
+  toast(`${name} rejoint la partie !`, 'success');
+}
+function removePlayer(name) {
+  if (!confirm(`Supprimer ${name} ?`)) return;
+  state.players = state.players.filter(p => p !== name);
+  delete state.playerData[name];
+  if (state.activePlayer === name) state.activePlayer = state.players[0] || null;
+  saveState(); renderAll();
+}
+function setActivePlayer(name) { state.activePlayer = name; saveState(); renderAll(); }
+
+function addColleague() {
+  const input = document.getElementById('newColleagueName');
+  const name = input.value.trim();
+  if (!name || state.colleagues.includes(name)) { input.value = ''; return; }
+  state.colleagues.push(name);
+  input.value = '';
+  saveState(); renderAll();
+  toast(`${name} ajouté`, 'info');
+}
+function removeColleague(name) {
+  state.colleagues = state.colleagues.filter(c => c !== name);
+  saveState(); renderAll();
+}
+
+function placeBet(colleague, type) {
+  const pd = getPlayerData();
+  if (!pd) return toast('Sélectionnez un joueur', 'error');
+  if (state.validated[today()]) return toast('Journée déjà validée !', 'error');
+  const amountEl = document.getElementById(`amount-${CSS.escape(colleague)}`);
+  const amount = parseInt(amountEl?.value) || state.defaultBet;
+  if (amount <= 0) return toast('Mise invalide', 'error');
+  if (amount > pd.credits) return toast('Pas assez de crédits !', 'error');
+  if (!pd.bets[today()]) pd.bets[today()] = {};
+  pd.bets[today()][colleague] = { type, amount };
+  saveState(); renderAll();
+  toast(`${colleague} → ${type === 'office' ? '🏢 Bureau' : '🏠 TT'} (${amount} cr.)`, 'info');
+}
+function cancelBet(colleague) {
+  const pd = getPlayerData();
+  if (!pd || state.validated[today()]) return;
+  if (pd.bets[today()]?.[colleague]) { delete pd.bets[today()][colleague]; saveState(); renderAll(); }
+}
+
+function toggleResult(colleague) {
+  if (state.validated[today()]) return;
+  if (!state.results[today()]) state.results[today()] = {};
+  const c = state.results[today()][colleague];
+  if (!c) state.results[today()][colleague] = 'office';
+  else if (c === 'office') state.results[today()][colleague] = 'remote';
+  else delete state.results[today()][colleague];
+  saveState(); renderResults();
+}
+
+function validateDay() {
+  const d = today();
+  if (state.validated[d]) return toast('Déjà validé !', 'error');
+  if (!state.results[d] || Object.keys(state.results[d]).length === 0) return toast('Indiquez les présences d\'abord !', 'error');
+  const results = state.results[d];
+  state.players.forEach(pn => {
+    const pd = state.playerData[pn];
+    if (!pd?.bets[d]) return;
+    Object.entries(pd.bets[d]).forEach(([col, bet]) => {
+      const actual = results[col];
+      if (!actual) return;
+      const won = bet.type === actual;
+      if (won) {
+        const gain = Math.round(bet.amount * (state.winMultiplier - 1));
+        pd.credits += gain;
+        pd.wins++;
+        pd.history.unshift({ date: d, colleague: col, bet: bet.type, actual, amount: bet.amount, result: 'win', delta: `+${gain}` });
+      } else {
+        pd.credits -= bet.amount;
+        pd.losses++;
+        pd.history.unshift({ date: d, colleague: col, bet: bet.type, actual, amount: bet.amount, result: 'loss', delta: `-${bet.amount}` });
+      }
+    });
+  });
+  state.validated[d] = true;
+  saveState(); renderAll();
+  toast('Journée validée ! Crédits mis à jour.', 'success');
+}
+
+function resetMonth() {
+  if (!confirm(`Remettre tous les joueurs à ${state.startingCredits} crédits et effacer les paris ?`)) return;
+  state.players.forEach(n => { state.playerData[n] = { credits: state.startingCredits, wins: 0, losses: 0, bets: {}, history: [] }; });
+  state.results = {}; state.validated = {};
+  saveState(); renderAll();
+  toast('Nouveau mois !', 'success');
+}
+
+function updateSetting() {
+  state.startingCredits = parseInt(document.getElementById('startingCredits').value) || 1000;
+  state.defaultBet = parseInt(document.getElementById('defaultBet').value) || 50;
+  state.winMultiplier = parseFloat(document.getElementById('winMultiplier').value) || 2;
+  saveState();
+}
+
+// ============================
+// TABS
+// ============================
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-content').forEach(e => e.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+  el.classList.add('active');
+}
+
+// ============================
+// RENDER
+// ============================
+function renderAll() {
+  renderPlayerBar(); renderStats(); renderColleagueGrid(); renderSettings(); renderResults(); renderLeaderboard(); renderHistory();
+  document.getElementById('todayDate').textContent = formatDate(today());
+  document.getElementById('resultDate').textContent = formatDate(today());
+  updateSaveIndicator();
+}
+
+function renderPlayerBar() {
+  const bar = document.getElementById('playerBar');
+  if (state.players.length === 0) { bar.innerHTML = '<span style="font-size:12px;color:var(--text2);">Ajoutez des joueurs dans ⚙️ Config</span>'; return; }
+  bar.innerHTML = state.players.map(n => `<div class="player-chip ${state.activePlayer === n ? 'active' : ''}" onclick="setActivePlayer('${n.replace(/'/g,"\\'")}')">${n}</div>`).join('');
+}
+
+function renderStats() {
+  const pd = getPlayerData();
+  document.getElementById('statCredits').textContent = pd ? pd.credits.toLocaleString() : '—';
+  document.getElementById('statWins').textContent = pd ? pd.wins : '—';
+  document.getElementById('statLosses').textContent = pd ? pd.losses : '—';
+  const t = pd ? pd.wins + pd.losses : 0;
+  document.getElementById('statAccuracy').textContent = t > 0 ? Math.round(pd.wins / t * 100) + '%' : '—';
+}
+
+function renderColleagueGrid() {
+  const grid = document.getElementById('colleagueGrid');
+  if (state.colleagues.length === 0) { grid.innerHTML = '<div class="empty-state"><div class="emoji">👥</div><p>Ajoutez des collègues dans ⚙️ Config</p></div>'; return; }
+  const bets = getTodayBets();
+  const locked = state.validated[today()];
+  grid.innerHTML = state.colleagues.map(name => {
+    const bet = bets[name];
+    const color = getColor(name);
+    const esc = name.replace(/'/g, "\\'");
+    let cls = '', info = '';
+    if (bet) {
+      cls = bet.type === 'office' ? 'bet-office' : 'bet-remote';
+      info = `<div class="bet-label ${bet.type}">${bet.type === 'office' ? '🏢 Bureau' : '🏠 TT'}</div><div class="bet-amount">${bet.amount} cr.</div>${!locked ? `<div style="margin-top:6px;"><button class="bet-btn cancel btn-sm" onclick="event.stopPropagation();cancelBet('${esc}')">✕ Annuler</button></div>` : ''}`;
+    }
+    const ctrls = !bet && !locked ? `<div class="bet-controls"><input type="number" class="amount-input" id="amount-${CSS.escape(name)}" value="${state.defaultBet}" min="1" onclick="event.stopPropagation()"><div class="bet-row"><button class="bet-btn office" onclick="event.stopPropagation();placeBet('${esc}','office')">🏢 Bureau</button><button class="bet-btn remote" onclick="event.stopPropagation();placeBet('${esc}','remote')">🏠 TT</button></div></div>` : '';
+    return `<div class="colleague-card ${cls}"><div class="avatar" style="background:${color};">${name.charAt(0).toUpperCase()}</div><div class="name">${name}</div>${info}${ctrls}</div>`;
+  }).join('');
+}
+
+function renderResults() {
+  const grid = document.getElementById('resultGrid');
+  if (state.colleagues.length === 0) { grid.innerHTML = '<div class="empty-state"><p>Aucun collègue</p></div>'; return; }
+  const results = state.results[today()] || {};
+  const locked = state.validated[today()];
+  document.getElementById('validateBar').style.display = locked ? 'none' : 'flex';
+  grid.innerHTML = state.colleagues.map(name => {
+    const s = results[name];
+    let cls = '', label = '❓ Cliquer';
+    if (s === 'office') { cls = 'present'; label = '🏢 Bureau'; }
+    else if (s === 'remote') { cls = 'absent'; label = '🏠 TT'; }
+    const esc = name.replace(/'/g, "\\'");
+    return `<div class="result-chip ${cls}" onclick="${locked ? '' : `toggleResult('${esc}')`}" style="${locked ? 'cursor:default;' : ''}"><div class="r-name">${name}</div><div class="r-status">${label}</div></div>`;
+  }).join('');
+}
+
+function renderLeaderboard() {
+  const lb = document.getElementById('leaderboard');
+  if (state.players.length === 0) { lb.innerHTML = '<div class="empty-state"><div class="emoji">🏆</div><p>Ajoutez des joueurs</p></div>'; return; }
+  const sorted = [...state.players].map(n => ({ name: n, credits: state.playerData[n]?.credits || 0 })).sort((a, b) => b.credits - a.credits);
+  const medals = ['🥇', '🥈', '🥉'];
+  lb.innerHTML = sorted.map((p, i) => `<div class="lb-row"><div class="rank">${medals[i] || (i + 1)}</div><div class="lb-name">${p.name}</div><div class="lb-score">${p.credits.toLocaleString()} cr.</div></div>`).join('');
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const pd = getPlayerData();
+  if (!pd || pd.history.length === 0) { list.innerHTML = '<div class="empty-state"><div class="emoji">📜</div><p>Aucun historique</p></div>'; return; }
+  list.innerHTML = pd.history.slice(0, 50).map(h => `<div class="history-row"><div class="h-date">${formatDate(h.date)}</div><div class="h-detail">${h.colleague} — parié <strong>${h.bet === 'office' ? '🏢' : '🏠'}</strong>, réalité <strong>${h.actual === 'office' ? '🏢' : '🏠'}</strong> (${h.amount} cr.)</div><div class="h-amount ${h.result}">${h.delta} cr.</div></div>`).join('');
+}
+
+function renderSettings() {
+  document.getElementById('startingCredits').value = state.startingCredits;
+  document.getElementById('defaultBet').value = state.defaultBet;
+  document.getElementById('winMultiplier').value = state.winMultiplier;
+  document.getElementById('playerList').innerHTML = state.players.map(n => `<div class="tag">${n}<span class="remove" onclick="removePlayer('${n.replace(/'/g, "\\'")}')">✕</span></div>`).join('');
+  document.getElementById('colleagueList').innerHTML = state.colleagues.map(n => `<div class="tag"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getColor(n)};margin-right:4px;"></span>${n}<span class="remove" onclick="removeColleague('${n.replace(/'/g, "\\'")}')">✕</span></div>`).join('');
+}
+
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// INIT
+renderAll();
+</script>
+</body>
+</html>
